@@ -23,9 +23,20 @@
 | 平台 | 路径 |
 |------|------|
 | Claude Code | `~/.claude/skills/neat-freak/` |
-| OpenAI Codex / OpenCode / OpenClaw | 参考各自的 skills 目录约定 |
+| OpenAI Codex | `~/.codex/skills/neat-freak/` |
+| OpenClaw | `~/.openclaw/skills/neat-freak/` |
+| OpenCode | 直接复用上面 Claude Code / Codex 的目录，无需另装 |
+
+```bash
+git clone https://github.com/jiangwanyutao/neat-freak.git ~/.claude/skills/neat-freak
+```
 
 详细路径与同步矩阵见 `references/agent-paths.md` 与 `references/sync-matrix.md`。
+
+## 边界
+
+- **整份文件的删除一定会先问你**；文件内部的过期段落由 skill 自行改写删除。
+- 全局配置（`~/.claude/CLAUDE.md` 等）只在你明确提出跨项目原则时才动。
 
 ## 目录
 
@@ -33,11 +44,12 @@
 .
 ├── SKILL.md                    # Skill 主体（含触发规则与执行流程）
 ├── README.md                   # 本文件
+├── LICENSE                     # MIT
 └── references/
-    ├── agent-paths.md          # 各平台 skills 目录路径
+    ├── agent-paths.md          # 各平台记忆与 skills 目录路径
     └── sync-matrix.md          # 跨 Agent 知识同步矩阵
 ```
 
 ## License
 
-按使用方约定。
+MIT，见 [LICENSE](LICENSE)。

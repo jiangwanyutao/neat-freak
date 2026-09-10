@@ -1,22 +1,27 @@
 ---
 name: neat-freak
 description: >
-  End-of-session knowledge cleanup with OCD-level rigor — reconciles project docs
-  (CLAUDE.md, README.md, docs/) and agent memory against the code so nothing rots.
-  会话结束后对项目文档和记忆进行洁癖级审查与同步。MUST trigger when the user says:
-  "sync up", "tidy up docs", "update memory", "clean up docs", "/sync", "/neat", "同步一下",
-  "整理文档", "整理一下", "更新记忆", "梳理一下", "收尾", "这个阶段做完了",
-  "新人能直接上手", or any phrase suggesting a dev milestone where knowledge needs
-  reconciliation. Also trigger when the user reports stale docs, conflicting memories,
-  or wants a clean handoff to teammates or other agents. Bare "整理" / "tidy" with
-  prior dev context counts — do not under-trigger. Cross-platform: works on Claude Code,
-  OpenAI Codex, OpenCode, and OpenClaw.
+  Reconciles project docs (CLAUDE.md, README.md, docs/) and agent memory against the
+  code so nothing rots. 会话结束后对项目文档和记忆做洁癖级审查与同步。Triggers on
+  "sync up" / "tidy up docs" / "update memory" / "/sync" / "/neat" / "同步一下" /
+  "整理一下" / "更新记忆" / "收尾", on any dev milestone needing a clean handoff, and
+  on reports of stale docs or conflicting memories. 完整触发清单见正文「触发条件」。
 ---
 
 # 洁癖 — Knowledge Base Neat-Freak
 
 > **Cross-platform Agent Skill** — Claude Code · OpenAI Codex · OpenCode · OpenClaw 通用。
 > 跨平台 SKILL.md，遵循开放 Agent Skill 规范。
+
+## 触发条件
+
+下列措辞出现即执行本 skill，**不要漏触发**：
+
+- 英文：`sync up`、`tidy up docs`、`update memory`、`clean up docs`、`/sync`、`/neat`、裸 `tidy`（有开发上下文时）
+- 中文：`同步一下`、`整理文档`、`整理一下`、`更新记忆`、`梳理一下`、`收尾`、`这个阶段做完了`、`新人能直接上手`、裸 `整理`（有开发上下文时）
+- 语义触发：任何"开发到了一个节点、知识需要对齐"的表达；用户反馈文档过期、记忆互相矛盾；用户想把项目交接给同事或另一个 agent
+
+## 角色
 
 你是一个**知识库编辑**，不是记录员。记录员只会往后追加，编辑会审查全局、合并重复、修正过期、删除废弃。你的工作是让整个项目的知识体系始终保持**干净、准确、对新人友好**的状态——像有洁癖一样。
 
@@ -44,15 +49,17 @@ description: >
 
 ### 第一步：盘点现状（强制机械式枚举，不能跳过）
 
-**先做 ls，再做判断。**
+**先枚举目录，再做判断。**
+
+**用 agent 自带的文件工具（Glob / Grep / List / Read）枚举，不要裸跑 shell** —— `find`、`grep -E`、`2>/dev/null` 在 Windows PowerShell 下直接报错，而报错常被当成"这里没有文件"。只有在确认 shell 是 POSIX（Linux / macOS / Git Bash）时才用下面括号里的命令。
 
 1. 列出 agent 的记忆文件（如有）：
-   - Claude Code：`ls ~/.claude/projects/<...>/memory/` 并读 `MEMORY.md` 及所有被引用的 `.md`
-   - Codex / OpenCode / 其他：找该 agent 的等价位置（见 references/agent-paths.md）
+   - Claude Code：列出 `~/.claude/projects/<...>/memory/`，读 `MEMORY.md` 及所有被引用的 `.md`
+   - Codex / OpenCode / OpenClaw / 其他：找该 agent 的等价位置（见 references/agent-paths.md）
 2. 对本次对话涉及的**每一个项目**：
-   - `ls <project-root>/` → 确认根目录结构
-   - `ls <project-root>/docs/ 2>/dev/null` → **枚举所有 docs**（缺失也要确认）
-   - `find <project-root> -maxdepth 2 -name "*.md" -not -path "*/node_modules/*" -not -path "*/.git/*"` → 兜底抓散落的 .md
+   - 列出 `<project-root>/` → 确认根目录结构
+   - 列出 `<project-root>/docs/` → **枚举所有 docs**（目录不存在也要明确记下来）
+   - Glob `<project-root>/**/*.md`（排除 `node_modules`、`.git`、`dist`）→ 兜底抓散落的 .md
    - 读 `README.md`、`CLAUDE.md` / `AGENTS.md`、每一个 `docs/*.md`
 3. 读全局 agent 配置（若有，如 `~/.claude/CLAUDE.md`、`~/.codex/AGENTS.md`）
 4. 回顾本次对话全部内容
@@ -77,14 +84,19 @@ description: >
 
 ### 第三步：实际修改（用工具，不只是描述）
 
-你必须**真的用 Edit 修改现有文件、用 Write 创建新文件、用删除命令清理废弃文件**。"我会怎么改"的描述不算完成。
+你必须**真的用 Edit 修改现有文件、用 Write 创建新文件**。"我会怎么改"的描述不算完成。
+
+**删除红线**：
+- **整个文件的删除一律先问用户**，无论它看起来多废弃 —— 你看不到它有没有被外部链接、被 CI 引用、被别的仓库 include。
+- 文件**内部**的条目（过期段落、完成的待办、推翻的决策）自己改、自己删，不用问。
+- agent 记忆文件属于 agent 自己的知识，整份删除同样先问。
 
 **顺序建议**：先改 docs/（改错影响外部）→ 再改 CLAUDE.md/AGENTS.md → 最后理记忆。先动外部优先级最高的，即使中途被打断，读者看到的也是对齐的最新状态。
 
 **编辑原则**：
 
 - **合并优于追加**：新信息是对旧信息的更新，改旧条目，不要再加一条
-- **删除优于保留**：完成的临时计划、推翻的决策、过期的上下文，删掉
+- **删除优于保留**：完成的临时计划、推翻的决策、过期的上下文，删掉（整份文件例外，见上面的删除红线）
 - **精确优于冗长**：一条记忆说清楚一件事，别塞三件
 - **绝对时间**：永远 `2026-04-29`，不写"今天"、"最近"
 - **面向读者**：docs/ 的读者是"第一次接触这个项目的外部人"，写的时候想象对方只有 5 分钟能看完
@@ -114,7 +126,7 @@ API 速查表、环境变量表、术语表是高频查询的结构化信息，*
 - [ ] 新增环境变量：**在 runbook 和项目根 markdown 都出现了**
 - [ ] 新增数据库表：**在 architecture 的 Data Model 和项目根 markdown 都出现了**
 - [ ] 跨项目影响：下游项目的 docs 也跟着改了
-- [ ] 没有相对时间遗留（`grep -E "今天|昨天|刚刚|最近|上周|today|yesterday|recently"` 清零）
+- [ ] 没有相对时间遗留：在**本次改过的 markdown 文件**里搜 `今天|昨天|刚刚|最近|上周|today|yesterday|recently` 并清零。**只扫 .md、只扫本次改动的文件** —— 全仓库扫会在源码注释、测试数据、变更日志里刷出大量无关命中，然后这一条就被整体跳过了
 
 哪条打不了勾，**回去补**。不要因为"差不多了"就跳过这一步——这是这个 skill 的灵魂。
 
@@ -148,7 +160,9 @@ API 速查表、环境变量表、术语表是高频查询的结构化信息，*
 
 **对话没有产生新事实**：审查现有记忆和文档有没有过期 / 冲突 / 相对时间——审查本身就有价值。
 
-**记忆之间出现无法自动判断的矛盾**：列在「未处理」让用户决定。**这是唯一需要用户介入的情况**，其他都自己拍板。
+**记忆之间出现无法自动判断的矛盾**：列在「未处理」让用户决定。
+
+**需要用户介入的只有两种情况**：无法自动判断的矛盾，以及整份文件的删除。其余都自己拍板。
 
 **跨项目改动**：本次对话改了多个项目，每个项目都要跑一次完整的第一步（ls + 读 docs）。不要假设一个项目的 docs 改了，另一个就不用。尤其是上游-下游对接文档（集成指南 / SDK 说明 / API 协议），两边都要对齐。
 
@@ -157,4 +171,4 @@ API 速查表、环境变量表、术语表是高频查询的结构化信息，*
 ## 参考资料
 
 - **[references/sync-matrix.md](references/sync-matrix.md)** — 完整的"变更类型 → 要改哪些文件"映射表
-- **[references/agent-paths.md](references/agent-paths.md)** — Claude Code / Codex / OpenCode 各自的记忆与配置路径速查
+- **[references/agent-paths.md](references/agent-paths.md)** — Claude Code / Codex / OpenCode / OpenClaw 各自的记忆与配置路径速查
